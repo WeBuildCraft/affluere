@@ -13,7 +13,7 @@ export default function TopBar({ onSearchToggle, onCreateClick }: TopBarProps) {
           ?
         </button>
       </div>
-      <span className="top-bar-title">Affluere</span>
+      <span className="top-bar-title">Affleure</span>
       <button className="top-bar-add" onClick={onCreateClick} title="Deposer un pin">
         +
       </button>
