@@ -234,9 +234,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             {mode === 'signup' && (
               <div className="auth-terms">
                 En creant un compte, vous acceptez les{' '}
-                <a href="/terms" target="_blank" rel="noopener">Conditions d&apos;utilisation</a>
+                <a href="/conditions" target="_blank" rel="noopener">Conditions d&apos;utilisation</a>
                 {' '}et la{' '}
-                <a href="/privacy" target="_blank" rel="noopener">Politique de confidentialite</a>
+                <a href="/confidentialite" target="_blank" rel="noopener">Politique de confidentialite</a>
                 {' '}d&apos;Affleure.
               </div>
             )}
