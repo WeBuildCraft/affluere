@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8643a"/>
+      <stop offset="100%" stop-color="#d14e28"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="108" ry="108" fill="url(#bg)"/>
+  <!-- Stylized "A" letterform with a pin/location feel -->
+  <!-- Main A shape -->
+  <path d="M256 96 L148 400 L184 400 L208 328 L304 328 L328 400 L364 400 Z M256 168 L292 304 L220 304 Z" fill="white" opacity="0.95"/>
+  <!-- Small circle "dot" above the A — like a map pin head -->
+  <circle cx="256" cy="72" r="16" fill="white" opacity="0.9"/>
+  <!-- Subtle wave at bottom — stories surfacing -->
+  <path d="M100 420 Q156 400 200 420 Q244 440 288 420 Q332 400 376 420 Q420 440 412 420"
+        stroke="white" stroke-width="6" fill="none" opacity="0.5" stroke-linecap="round"/>
+</svg>
