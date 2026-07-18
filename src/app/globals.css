@@ -1210,6 +1210,132 @@ html, body {
 }
 
 /* ============================================================
+   LEGAL PAGES — Privacy Policy & Terms of Use
+   ============================================================ */
+.legal-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.legal-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--color-rule);
+  background: white;
+}
+.legal-home-link {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.legal-home-link:hover {
+  color: var(--color-primary);
+}
+
+.legal-content {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+  flex: 1;
+}
+.legal-content h1 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  color: var(--color-ink);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.legal-updated {
+  font-size: 13px;
+  color: var(--color-ink-lighter);
+  margin-bottom: 40px;
+}
+.legal-content section {
+  margin-bottom: 36px;
+}
+.legal-content h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--color-ink);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-rule-light);
+}
+.legal-content h3 {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+.legal-content p {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-ink-light);
+  margin-bottom: 12px;
+}
+.legal-content ul {
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+.legal-content li {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-ink-light);
+  margin-bottom: 6px;
+}
+.legal-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-content a:hover {
+  color: var(--color-primary-dark);
+}
+.legal-content strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.legal-contact {
+  background: white;
+  border: 1px solid var(--color-rule);
+  border-radius: 8px;
+  padding: 16px 20px;
+  line-height: 1.8;
+}
+
+.legal-footer {
+  padding: 24px 32px;
+  text-align: center;
+  border-top: 1px solid var(--color-rule);
+  background: white;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-ink-lighter);
+}
+.legal-footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.legal-footer a:hover {
+  text-decoration: underline;
+}
+.legal-footer-sep {
+  margin: 0 12px;
+  color: var(--color-rule);
+}
+
+/* ============================================================
    MOBILE â bottom sheet instead of side panel
    ============================================================ */
 @media (max-width: 768px) {
