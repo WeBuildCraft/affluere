@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
 interface AuthModalProps {
@@ -9,14 +9,69 @@ interface AuthModalProps {
   onSuccess?: () => void
 }
 
+const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/
+const USERNAME_CHAR_REGEX = /^[a-z0-9_]*$/
+
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth()
+
+  // Username validation state
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const { signInWithEmail, signUpWithEmail, checkUsernameAvailable, signInWithGoogle } = useAuth()
+
+  // Reset form when switching modes
+  const switchMode = (newMode: 'login' | 'signup') => {
+    setMode(newMode)
+    setError('')
+    setSuccessMsg('')
+    setUsername('')
+    setAgeConfirmed(false)
+    setUsernameStatus('idle')
+  }
+
+  // Real-time username validation
+  useEffect(() => {
+    if (mode !== 'signup' || !username) {
+      setUsernameStatus('idle')
+      return
+    }
+
+    if (!USERNAME_CHAR_REGEX.test(username)) {
+      setUsernameStatus('invalid')
+      return
+    }
+
+    if (username.length < 3) {
+      setUsernameStatus('idle')
+      return
+    }
+
+    if (!USERNAME_REGEX.test(username)) {
+      setUsernameStatus('invalid')
+      return
+    }
+
+    setUsernameStatus('checking')
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      const available = await checkUsernameAvailable(username)
+      setUsernameStatus(available ? 'available' : 'taken')
+    }, 400)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [username, mode, checkUsernameAvailable])
 
   if (!isOpen) return null
 
@@ -35,7 +90,24 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         onClose()
       }
     } else {
-      const { error } = await signUpWithEmail(email, password)
+      // Signup validations
+      if (!USERNAME_REGEX.test(username)) {
+        setError('Le nom d\'utilisateur doit contenir entre 3 et 20 caracteres (lettres, chiffres, _).')
+        setLoading(false)
+        return
+      }
+      if (usernameStatus === 'taken') {
+        setError('Ce nom d\'utilisateur est deja pris.')
+        setLoading(false)
+        return
+      }
+      if (!ageConfirmed) {
+        setError('Vous devez confirmer avoir 18 ans ou plus.')
+        setLoading(false)
+        return
+      }
+
+      const { error } = await signUpWithEmail(email, password, username)
       if (error) {
         setError(error.message)
       } else {
@@ -50,6 +122,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     const { error } = await signInWithGoogle()
     if (error) setError(error.message)
   }
+
+  const isSignupDisabled =
+    loading ||
+    (mode === 'signup' && (
+      usernameStatus !== 'available' ||
+      !ageConfirmed ||
+      !email ||
+      password.length < 8
+    ))
 
   return (
     <div className="modal-overlay open" onClick={onClose}>
@@ -67,6 +148,45 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           )}
 
           <form onSubmit={handleSubmit}>
+            {mode === 'signup' && (
+              <div className="auth-username-field">
+                <div className="auth-input-wrapper">
+                  <span className="auth-input-prefix">@</span>
+                  <input
+                    type="text"
+                    className="auth-input auth-input-with-prefix"
+                    placeholder="nom_utilisateur"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    maxLength={20}
+                    required
+                    autoComplete="username"
+                  />
+                  {usernameStatus === 'checking' && (
+                    <span className="auth-username-indicator checking" aria-label="Verification en cours">...</span>
+                  )}
+                  {usernameStatus === 'available' && (
+                    <span className="auth-username-indicator available" aria-label="Disponible">&#10003;</span>
+                  )}
+                  {usernameStatus === 'taken' && (
+                    <span className="auth-username-indicator taken" aria-label="Deja pris">&#10007;</span>
+                  )}
+                  {usernameStatus === 'invalid' && (
+                    <span className="auth-username-indicator taken" aria-label="Invalide">&#10007;</span>
+                  )}
+                </div>
+                {usernameStatus === 'taken' && (
+                  <div className="auth-field-hint error">Ce nom est deja pris</div>
+                )}
+                {usernameStatus === 'invalid' && (
+                  <div className="auth-field-hint error">3-20 caracteres : lettres, chiffres, _</div>
+                )}
+                {usernameStatus === 'available' && (
+                  <div className="auth-field-hint success">Disponible</div>
+                )}
+              </div>
+            )}
+
             <input
               type="email"
               className="auth-input"
@@ -74,6 +194,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
             <input
               type="password"
@@ -83,12 +204,25 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             />
+
+            {mode === 'signup' && (
+              <label className="auth-checkbox">
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                />
+                <span>Je confirme avoir 18 ans ou plus</span>
+              </label>
+            )}
+
             <button
               type="submit"
               className="btn-primary"
               style={{ width: '100%' }}
-              disabled={loading}
+              disabled={mode === 'signup' ? isSignupDisabled : loading}
             >
               {loading
                 ? '...'
@@ -96,6 +230,16 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 ? 'Se connecter'
                 : "S'inscrire"}
             </button>
+
+            {mode === 'signup' && (
+              <div className="auth-terms">
+                En creant un compte, vous acceptez les{' '}
+                <a href="/terms" target="_blank" rel="noopener">Conditions d&apos;utilisation</a>
+                {' '}et la{' '}
+                <a href="/privacy" target="_blank" rel="noopener">Politique de confidentialite</a>
+                {' '}d&apos;Affleure.
+              </div>
+            )}
           </form>
 
           <div className="auth-divider">ou</div>
@@ -114,14 +258,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             {mode === 'login' ? (
               <>
                 Pas encore de compte ?{' '}
-                <button onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}>
+                <button onClick={() => switchMode('signup')}>
                   S&apos;inscrire
                 </button>
               </>
             ) : (
               <>
                 Deja un compte ?{' '}
-                <button onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}>
+                <button onClick={() => switchMode('login')}>
                   Se connecter
                 </button>
               </>
