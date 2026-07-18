@@ -51,12 +51,24 @@ export function useAuth() {
     return { error }
   }
 
-  const signUpWithEmail = async (email: string, password: string) => {
+  const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle()
+    return !data
+  }
+
+  const signUpWithEmail = async (email: string, password: string, username: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          username: username.toLowerCase(),
+        },
       },
     })
     return { error }
@@ -84,6 +96,7 @@ export function useAuth() {
     loading,
     signInWithEmail,
     signUpWithEmail,
+    checkUsernameAvailable,
     signInWithGoogle,
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
