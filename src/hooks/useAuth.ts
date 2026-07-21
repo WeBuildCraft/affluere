@@ -51,14 +51,14 @@ export function useAuth() {
     return { error }
   }
 
-  const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  const checkUsernameAvailable = useCallback(async (username: string): Promise<boolean> => {
     const { data } = await supabase
       .from('profiles')
       .select('id')
       .eq('username', username)
       .maybeSingle()
     return !data
-  }
+  }, [supabase])
 
   const signUpWithEmail = async (email: string, password: string, username: string) => {
     const { error } = await supabase.auth.signUp({
