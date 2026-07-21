@@ -965,10 +965,12 @@ html, body {
   inset: 0;
   z-index: 500;
   background: rgba(26,23,21,0.5);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 10vh;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
+  overflow-y: auto;
 }
 .modal-overlay.open { opacity: 1; pointer-events: auto; }
 
@@ -1138,14 +1140,18 @@ html, body {
   font-size: 12px;
 }
 
+.auth-message-slot {
+  min-height: 4px;
+  margin-bottom: 4px;
+}
 .auth-error {
   color: #dc2626;
   font-size: 12px;
-  margin-bottom: 8px;
 }
 
 .auth-username-field {
   margin-bottom: 10px;
+  min-height: 58px;
 }
 .auth-input-wrapper {
   position: relative;
@@ -1175,6 +1181,9 @@ html, body {
 .auth-username-indicator.available { color: #22a55b; }
 .auth-username-indicator.taken { color: #dc2626; }
 
+.auth-field-hint-slot {
+  min-height: 20px;
+}
 .auth-field-hint {
   font-size: 11px;
   margin-top: 4px;
