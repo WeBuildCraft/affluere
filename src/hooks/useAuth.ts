@@ -94,10 +94,9 @@ export function useAuth() {
         }
         // If we got a direct response (not a redirect), the provider may not be enabled
         if (res.status >= 400) {
-          const body = await res.json().catch(() => null)
           return {
             error: {
-              message: body?.msg || 'La connexion Google n\'est pas disponible pour le moment.',
+              message: 'La connexion Google n\'est pas disponible pour le moment.',
             },
           }
         }
