@@ -140,12 +140,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         </div>
 
         <div className="auth-modal-content">
-          {error && <div className="auth-error">{error}</div>}
-          {successMsg && (
-            <div style={{ color: '#22a55b', fontSize: 12, marginBottom: 8 }}>
-              {successMsg}
-            </div>
-          )}
+          <div className="auth-message-slot">
+            {error && <div className="auth-error">{error}</div>}
+            {successMsg && (
+              <div style={{ color: '#22a55b', fontSize: 12 }}>
+                {successMsg}
+              </div>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit}>
             {mode === 'signup' && (
@@ -175,15 +177,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                     <span className="auth-username-indicator taken" aria-label="Invalide">&#10007;</span>
                   )}
                 </div>
-                {usernameStatus === 'taken' && (
-                  <div className="auth-field-hint error">Ce nom est deja pris</div>
-                )}
-                {usernameStatus === 'invalid' && (
-                  <div className="auth-field-hint error">3-20 caracteres : lettres, chiffres, _</div>
-                )}
-                {usernameStatus === 'available' && (
-                  <div className="auth-field-hint success">Disponible</div>
-                )}
+                <div className="auth-field-hint-slot">
+                  {usernameStatus === 'taken' && (
+                    <div className="auth-field-hint error">Ce nom est deja pris</div>
+                  )}
+                  {usernameStatus === 'invalid' && (
+                    <div className="auth-field-hint error">3-20 caracteres : lettres, chiffres, _</div>
+                  )}
+                  {usernameStatus === 'available' && (
+                    <div className="auth-field-hint success">Disponible</div>
+                  )}
+                </div>
               </div>
             )}
 
