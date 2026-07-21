@@ -75,13 +75,40 @@ export function useAuth() {
   }
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
       },
     })
-    return { error }
+    if (error) return { error }
+    if (data?.url) {
+      // Pre-check: verify the OAuth provider is configured before redirecting
+      try {
+        const res = await fetch(data.url, { redirect: 'manual' })
+        if (res.type === 'opaqueredirect') {
+          // Provider is configured — Supabase is redirecting to the OAuth provider
+          window.location.href = data.url
+          return { error: null }
+        }
+        // If we got a direct response (not a redirect), the provider may not be enabled
+        if (res.status >= 400) {
+          const body = await res.json().catch(() => null)
+          return {
+            error: {
+              message: body?.msg || 'La connexion Google n\'est pas disponible pour le moment.',
+            },
+          }
+        }
+        // Fallback: redirect anyway
+        window.location.href = data.url
+      } catch {
+        // Network/CORS error — redirect and let the browser handle it
+        window.location.href = data.url
+      }
+    }
+    return { error: null }
   }
 
   const signOut = async () => {
