@@ -79,52 +79,74 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   if (!isOpen) return null
 
+  // Safely extract a displayable error message from any error shape
+  const getErrorMsg = (err: unknown): string => {
+    const fallback = 'Une erreur est survenue.'
+    if (!err) return fallback
+    if (typeof err === 'string') return err.trim() || fallback
+    const msg = (err as { message?: unknown }).message
+    if (typeof msg === 'string') {
+      const trimmed = msg.trim()
+      // Filter out useless stringified objects like "{}"
+      if (trimmed && trimmed !== '{}' && trimmed !== '[object Object]') return trimmed
+    }
+    return fallback
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setSuccessMsg('')
     setLoading(true)
 
-    if (mode === 'login') {
-      const { error } = await signInWithEmail(email, password)
-      if (error) {
-        setError(error?.message || 'Une erreur est survenue.')
+    try {
+      if (mode === 'login') {
+        const { error: err } = await signInWithEmail(email, password)
+        if (err) {
+          setError(getErrorMsg(err))
+        } else {
+          onSuccess?.()
+          onClose()
+        }
       } else {
-        onSuccess?.()
-        onClose()
-      }
-    } else {
-      // Signup validations
-      if (!USERNAME_REGEX.test(username)) {
-        setError('Le nom d\'utilisateur doit contenir entre 3 et 20 caracteres (lettres, chiffres, _).')
-        setLoading(false)
-        return
-      }
-      if (usernameStatus === 'taken') {
-        setError('Ce nom d\'utilisateur est deja pris.')
-        setLoading(false)
-        return
-      }
-      if (!ageConfirmed) {
-        setError('Vous devez confirmer avoir 18 ans ou plus.')
-        setLoading(false)
-        return
-      }
+        // Signup validations
+        if (!USERNAME_REGEX.test(username)) {
+          setError('Le nom d\'utilisateur doit contenir entre 3 et 20 caracteres (lettres, chiffres, _).')
+          setLoading(false)
+          return
+        }
+        if (usernameStatus === 'taken') {
+          setError('Ce nom d\'utilisateur est deja pris.')
+          setLoading(false)
+          return
+        }
+        if (!ageConfirmed) {
+          setError('Vous devez confirmer avoir 18 ans ou plus.')
+          setLoading(false)
+          return
+        }
 
-      const { error } = await signUpWithEmail(email, password, username)
-      if (error) {
-        setError(error?.message || 'Une erreur est survenue.')
-      } else {
-        setSuccessMsg('Verifiez votre email pour confirmer votre compte.')
+        const { error: err } = await signUpWithEmail(email, password, username)
+        if (err) {
+          setError(getErrorMsg(err))
+        } else {
+          setSuccessMsg('Verifiez votre email pour confirmer votre compte.')
+        }
       }
+    } catch {
+      setError('Une erreur est survenue.')
     }
     setLoading(false)
   }
 
   const handleGoogle = async () => {
     setError('')
-    const { error } = await signInWithGoogle()
-    if (error) setError(error?.message || 'Une erreur est survenue.')
+    try {
+      const { error: err } = await signInWithGoogle()
+      if (err) setError(getErrorMsg(err))
+    } catch {
+      setError('Une erreur est survenue.')
+    }
   }
 
   const isSignupDisabled =
