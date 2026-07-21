@@ -47,8 +47,18 @@ export function useAuth() {
   }, [supabase, fetchProfile])
 
   const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error }
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        const msg = typeof error.message === 'string' && error.message.trim()
+          ? error.message
+          : 'Une erreur est survenue lors de la connexion.'
+        return { error: { message: msg } }
+      }
+      return { error: null }
+    } catch {
+      return { error: { message: 'Une erreur est survenue lors de la connexion.' } }
+    }
   }
 
   const checkUsernameAvailable = useCallback(async (username: string): Promise<boolean> => {
@@ -61,17 +71,28 @@ export function useAuth() {
   }, [supabase])
 
   const signUpWithEmail = async (email: string, password: string, username: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: {
-          username: username.toLowerCase(),
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            username: username.toLowerCase(),
+          },
         },
-      },
-    })
-    return { error }
+      })
+      if (error) {
+        // Ensure error has a usable message string
+        const msg = typeof error.message === 'string' && error.message.trim()
+          ? error.message
+          : 'Une erreur est survenue lors de l\'inscription.'
+        return { error: { message: msg } }
+      }
+      return { error: null }
+    } catch {
+      return { error: { message: 'Une erreur est survenue lors de l\'inscription.' } }
+    }
   }
 
   const signInWithGoogle = async () => {
