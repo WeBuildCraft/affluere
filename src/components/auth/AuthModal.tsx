@@ -88,7 +88,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     if (mode === 'login') {
       const { error } = await signInWithEmail(email, password)
       if (error) {
-        setError(error.message)
+        setError(error?.message || 'Une erreur est survenue.')
       } else {
         onSuccess?.()
         onClose()
@@ -113,7 +113,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
       const { error } = await signUpWithEmail(email, password, username)
       if (error) {
-        setError(error.message)
+        setError(error?.message || 'Une erreur est survenue.')
       } else {
         setSuccessMsg('Verifiez votre email pour confirmer votre compte.')
       }
@@ -124,7 +124,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const handleGoogle = async () => {
     setError('')
     const { error } = await signInWithGoogle()
-    if (error) setError(error.message)
+    if (error) setError(error?.message || 'Une erreur est survenue.')
   }
 
   const isSignupDisabled =
