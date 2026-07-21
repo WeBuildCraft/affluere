@@ -82,7 +82,7 @@ export function useAuth() {
         skipBrowserRedirect: true,
       },
     })
-    if (error) return { error }
+    if (error) return { error: { message: 'La connexion Google n\'est pas disponible pour le moment.' } }
     if (data?.url) {
       // Pre-check: verify the OAuth provider is configured before redirecting
       try {
