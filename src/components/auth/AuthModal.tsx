@@ -28,6 +28,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   const { signInWithEmail, signUpWithEmail, checkUsernameAvailable, signInWithGoogle } = useAuth()
 
+  // Stable ref for the check function to avoid useEffect re-fires
+  const checkUsernameRef = useRef(checkUsernameAvailable)
+  checkUsernameRef.current = checkUsernameAvailable
+
   // Reset form when switching modes
   const switchMode = (newMode: 'login' | 'signup') => {
     setMode(newMode)
@@ -64,14 +68,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
-      const available = await checkUsernameAvailable(username)
+      const available = await checkUsernameRef.current(username)
       setUsernameStatus(available ? 'available' : 'taken')
     }, 400)
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [username, mode, checkUsernameAvailable])
+  }, [username, mode])
 
   if (!isOpen) return null
 
