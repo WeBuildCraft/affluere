@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import type { PinDetail, ContentType } from '@/types/database'
 
@@ -29,7 +29,7 @@ export default function MapView({
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const pinsLoadedRef = useRef(false)
+  const [mapReady, setMapReady] = useState(false)
 
   const updateCoords = useCallback((map: maplibregl.Map) => {
     const center = map.getCenter()
@@ -140,7 +140,7 @@ export default function MapView({
         position: [1.5, 210, 30],
       })
 
-      pinsLoadedRef.current = false
+      setMapReady(true)
       onMapReady(map)
     })
 
@@ -225,7 +225,7 @@ export default function MapView({
     return () => {
       map.off('click', 'pin-dots', handlePinClick)
     }
-  }, [pins, activeFilter, onPinClick])
+  }, [pins, activeFilter, onPinClick, mapReady])
 
   return <div ref={mapContainer} id="map" />
 }
