@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { PinDetail as PinDetailType, Comment, ReactionType, ContentType } from '@/types/database'
+import type { PinDetail as PinDetailType, Comment, ReactionType, ContentType, Photo } from '@/types/database'
 import { CONTENT_TYPES, REACTION_LABELS } from '@/types/database'
 
 const REACTION_EMOJIS: Record<ReactionType, string> = {
@@ -29,6 +29,7 @@ export default function PinDetailPanel({
   onAuthRequired,
   onToast,
 }: PinDetailProps) {
+  const [photos, setPhotos] = useState<Photo[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [commentText, setCommentText] = useState('')
   const [userReactions, setUserReactions] = useState<ReactionType[]>([])
@@ -42,6 +43,18 @@ export default function PinDetailPanel({
 
   useEffect(() => {
     if (!pin || !isOpen) return
+
+    // Fetch photos for this pin
+    const fetchPhotos = async () => {
+      const { data } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('pin_id', pin.id)
+        .is('deleted_at', null)
+        .order('position', { ascending: true })
+
+      if (data) setPhotos(data as Photo[])
+    }
 
     // Fetch comments
     const fetchComments = async () => {
@@ -102,6 +115,7 @@ export default function PinDetailPanel({
       noticed_too: pin.noticed_count,
     })
 
+    fetchPhotos()
     fetchComments()
     fetchUserState()
   }, [pin, isOpen, userId, supabase])
@@ -252,6 +266,20 @@ export default function PinDetailPanel({
           <br />
           {pin.location_name?.toUpperCase()}{pin.neighbourhood ? `, ${pin.neighbourhood.toUpperCase()}` : ''}
         </div>
+
+        {/* Photo */}
+        {photos.length > 0 && (
+          <div style={{ padding: '0 28px 16px' }}>
+            {photos.map((photo) => (
+              <img
+                key={photo.id}
+                src={photo.url}
+                alt={photo.alt_text || pin.title || ''}
+                className="pin-detail-photo"
+              />
+            ))}
+          </div>
+        )}
 
         {/* Body */}
         <div className="pin-detail-body">
