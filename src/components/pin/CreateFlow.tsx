@@ -54,6 +54,11 @@ export default function CreateFlow({
   const [exifDetected, setExifDetected] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Photo upload state (for "photo" content type)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   const supabase = createClient()
 
   // Effective coordinates: manual override (from search/EXIF) or map center
@@ -192,6 +197,10 @@ export default function CreateFlow({
     setSearchResults([])
     setExifDetected(false)
     lastGeocodedRef.current = ''
+    // Clean up photo upload state
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoFile(null)
+    setPhotoPreview(null)
   }
 
   const handleClose = () => {
@@ -206,7 +215,7 @@ export default function CreateFlow({
     const finalLat = parseFloat(effectiveLat.toFixed(4))
     const finalLng = parseFloat(effectiveLng.toFixed(4))
 
-    const { error } = await supabase.from('pins').insert({
+    const { data: pinData, error } = await supabase.from('pins').insert({
       creator_id: userId,
       latitude: finalLat,
       longitude: finalLng,
@@ -216,16 +225,40 @@ export default function CreateFlow({
       content_type: contentType,
       title: title || null,
       description: description || null,
-    })
+    }).select('id').single()
 
     if (error) {
       onToast(error.message.includes('Rate limit') ? 'Limite atteinte : 10 pins par jour' : 'Erreur lors de la publication')
       setSubmitting(false)
-    } else {
-      handleClose()
-      onToast('Pin publie !')
-      onPinCreated()
+      return
     }
+
+    // Upload photo if one was selected
+    if (photoFile && pinData?.id) {
+      const ext = photoFile.name.split('.').pop() || 'jpg'
+      const path = `${userId}/${pinData.id}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('pin-photos')
+        .upload(path, photoFile, { contentType: photoFile.type })
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('pin-photos')
+          .getPublicUrl(path)
+
+        await supabase.from('photos').insert({
+          pin_id: pinData.id,
+          url: urlData.publicUrl,
+          alt_text: title || null,
+          position: 0,
+        })
+      }
+    }
+
+    handleClose()
+    onToast('Pin publie !')
+    onPinCreated()
   }
 
   if (!isOpen) return null
@@ -234,7 +267,7 @@ export default function CreateFlow({
     <div className={`create-panel${isOpen ? ' open' : ''}`}>
       <div className="create-header">
         <span className="create-header-title">Deposer un pin</span>
-        <button className="view-close-btn" onClick={handleClose}>â</button>
+        <button className="view-close-btn" onClick={handleClose}>✕</button>
       </div>
 
       {/* Step dots */}
@@ -352,7 +385,7 @@ export default function CreateFlow({
                     </div>
                   )}
                   <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--color-ink-lighter)' }}>
-                    {displayLat}Â°N, {displayLng}Â°W
+                    {displayLat}°N, {displayLng}°W
                   </div>
                   {(manualLat !== null) && (
                     <button
@@ -374,7 +407,7 @@ export default function CreateFlow({
                 </>
               ) : (
                 <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--color-ink-lighter)' }}>
-                  {displayLat}Â°N, {displayLng}Â°W
+                  {displayLat}°N, {displayLng}°W
                 </div>
               )}
             </div>
@@ -412,6 +445,87 @@ export default function CreateFlow({
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
               Votre {contentType ? CONTENT_TYPES[contentType as ContentType].label.toLowerCase() : ''}
             </div>
+
+            {/* Photo upload — only for "photo" content type */}
+            {contentType === 'photo' && (
+              <div style={{ marginBottom: 20 }}>
+                <label className="create-label">Photo</label>
+                {photoPreview ? (
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <img
+                      src={photoPreview}
+                      alt="Apercu"
+                      style={{
+                        width: '100%',
+                        maxHeight: 240,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        display: 'block',
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        URL.revokeObjectURL(photoPreview)
+                        setPhotoFile(null)
+                        setPhotoPreview(null)
+                        if (photoInputRef.current) photoInputRef.current.value = ''
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.5)',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    style={{
+                      width: '100%',
+                      padding: '32px 16px',
+                      border: '2px dashed var(--color-rule)',
+                      borderRadius: 8,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 14,
+                      color: 'var(--color-ink-light)',
+                      textAlign: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    Choisir une photo
+                  </button>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setPhotoFile(file)
+                      setPhotoPreview(URL.createObjectURL(file))
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             <label className="create-label">Titre</label>
             <input
               className="create-input"
@@ -444,8 +558,21 @@ export default function CreateFlow({
                     borderRadius: '50%', verticalAlign: 'middle', marginRight: 4,
                   }}
                 />
-                {contentType ? CONTENT_TYPES[contentType as ContentType].label : ''} Â· Aujourd&apos;hui Â· {location?.location_name || `${displayLat}Â°N`}
+                {contentType ? CONTENT_TYPES[contentType as ContentType].label : ''} · Aujourd&apos;hui · {location?.location_name || `${displayLat}°N`}
               </div>
+              {photoPreview && (
+                <img
+                  src={photoPreview}
+                  alt="Apercu"
+                  style={{
+                    width: '100%',
+                    maxHeight: 200,
+                    objectFit: 'cover',
+                    borderRadius: 4,
+                    marginBottom: 8,
+                  }}
+                />
+              )}
               <div className="preview-title">{title || 'Sans titre'}</div>
               <div className="preview-text">{description}</div>
               {location?.neighbourhood && (
