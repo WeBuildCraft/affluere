@@ -1,16 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import type { PinDetail, ContentType } from '@/types/database'
-
-const TYPE_COLORS: Record<string, string> = {
-  observation: '#06b6d4',
-  story: '#8b5cf6',
-  photo: '#e8643a',
-  question: '#f59e0b',
-  conversation: '#22a55b',
-}
 
 interface MapViewProps {
   pins: PinDetail[]
@@ -29,7 +21,15 @@ export default function MapView({
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const [mapReady, setMapReady] = useState(false)
+  const mapLoadedRef = useRef(false)
+  const pinsRef = useRef<PinDetail[]>(pins)
+  const activeFilterRef = useRef(activeFilter)
+  const onPinClickRef = useRef(onPinClick)
+
+  // Keep refs in sync with latest props
+  pinsRef.current = pins
+  activeFilterRef.current = activeFilter
+  onPinClickRef.current = onPinClick
 
   const updateCoords = useCallback((map: maplibregl.Map) => {
     const center = map.getCenter()
@@ -39,6 +39,73 @@ export default function MapView({
     const ew = center.lng >= 0 ? 'E' : 'W'
     onCoordsChange(`${lat}°${ns} ${lng}°${ew}`)
   }, [onCoordsChange])
+
+  // Stable renderPins function that reads from refs
+  const renderPins = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !mapLoadedRef.current) return
+
+    const currentPins = pinsRef.current
+    const currentFilter = activeFilterRef.current
+
+    const filteredPins = currentFilter === 'all'
+      ? currentPins
+      : currentPins.filter((p) => p.content_type === currentFilter)
+
+    const geojson: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: filteredPins.map((p) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
+        properties: { id: p.id, type: p.content_type, title: p.title },
+      })),
+    }
+
+    // Remove old layer and source
+    if (map.getLayer('pin-dots')) map.removeLayer('pin-dots')
+    if (map.getSource('pins')) map.removeSource('pins')
+
+    map.addSource('pins', {
+      type: 'geojson',
+      data: geojson,
+    })
+
+    map.addLayer({
+      id: 'pin-dots',
+      type: 'circle',
+      source: 'pins',
+      paint: {
+        'circle-color': [
+          'match', ['get', 'type'],
+          'observation', '#06b6d4',
+          'story', '#8b5cf6',
+          'photo', '#e8643a',
+          'question', '#f59e0b',
+          'conversation', '#22a55b',
+          '#e8643a',
+        ],
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          12, 4,
+          15, 7,
+          18, 10,
+        ],
+        'circle-opacity': 0.92,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+      },
+    })
+
+    // Click handler using ref so it always has the latest callback
+    map.on('click', 'pin-dots', (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+      if (e.features?.[0]) {
+        const pinId = e.features[0].properties?.id
+        if (pinId) onPinClickRef.current(pinId)
+      }
+    })
+    map.on('mouseenter', 'pin-dots', () => { map.getCanvas().style.cursor = 'pointer' })
+    map.on('mouseleave', 'pin-dots', () => { map.getCanvas().style.cursor = '' })
+  }, [])
 
   // Initialize map
   useEffect(() => {
@@ -140,7 +207,10 @@ export default function MapView({
         position: [1.5, 210, 30],
       })
 
-      setMapReady(true)
+      // Mark map as loaded and render pins immediately
+      mapLoadedRef.current = true
+      renderPins()
+
       onMapReady(map)
     })
 
@@ -152,80 +222,14 @@ export default function MapView({
     return () => {
       map.remove()
       mapRef.current = null
+      mapLoadedRef.current = false
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update pins on the map when data or filter changes
+  // Re-render pins whenever data or filter changes
   useEffect(() => {
-    const map = mapRef.current
-    if (!map || !map.isStyleLoaded()) return
-
-    const filteredPins = activeFilter === 'all'
-      ? pins
-      : pins.filter((p) => p.content_type === activeFilter)
-
-    const geojson: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
-      features: filteredPins.map((p) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
-        properties: { id: p.id, type: p.content_type, title: p.title },
-      })),
-    }
-
-    // Remove old layer and source
-    if (map.getLayer('pin-dots')) map.removeLayer('pin-dots')
-    if (map.getSource('pins')) map.removeSource('pins')
-
-    map.addSource('pins', {
-      type: 'geojson',
-      data: geojson,
-    })
-
-    // Individual pin dots
-    map.addLayer({
-      id: 'pin-dots',
-      type: 'circle',
-      source: 'pins',
-      paint: {
-        'circle-color': [
-          'match', ['get', 'type'],
-          'observation', '#06b6d4',
-          'story', '#8b5cf6',
-          'photo', '#e8643a',
-          'question', '#f59e0b',
-          'conversation', '#22a55b',
-          '#e8643a',
-        ],
-        'circle-radius': [
-          'interpolate', ['linear'], ['zoom'],
-          12, 4,
-          15, 7,
-          18, 10,
-        ],
-        'circle-opacity': 0.92,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-      },
-    })
-
-    // Click handlers
-    const handlePinClick = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
-      if (e.features?.[0]) {
-        const pinId = e.features[0].properties?.id
-        if (pinId) onPinClick(pinId)
-      }
-    }
-
-    map.on('click', 'pin-dots', handlePinClick)
-
-    map.on('mouseenter', 'pin-dots', () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'pin-dots', () => { map.getCanvas().style.cursor = '' })
-
-    return () => {
-      map.off('click', 'pin-dots', handlePinClick)
-    }
-  }, [pins, activeFilter, onPinClick, mapReady])
+    renderPins()
+  }, [pins, activeFilter, renderPins])
 
   return <div ref={mapContainer} id="map" />
 }
