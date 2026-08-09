@@ -5,9 +5,9 @@ import maplibregl from 'maplibre-gl'
 import type { PinDetail, ContentType } from '@/types/database'
 
 const TYPE_COLORS: Record<string, string> = {
-  observation: '#e8643a',
+  observation: '#06b6d4',
   story: '#8b5cf6',
-  photo: '#06b6d4',
+  photo: '#e8643a',
   question: '#f59e0b',
   conversation: '#22a55b',
 }
@@ -173,49 +173,13 @@ export default function MapView({
       })),
     }
 
-    // Remove old layers and source
-    ;['pin-clusters', 'cluster-count', 'pin-dots'].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id)
-    })
+    // Remove old layer and source
+    if (map.getLayer('pin-dots')) map.removeLayer('pin-dots')
     if (map.getSource('pins')) map.removeSource('pins')
 
     map.addSource('pins', {
       type: 'geojson',
       data: geojson,
-      cluster: true,
-      clusterMaxZoom: 13,
-      clusterRadius: 50,
-    })
-
-    // Cluster circles
-    map.addLayer({
-      id: 'pin-clusters',
-      type: 'circle',
-      source: 'pins',
-      filter: ['has', 'point_count'],
-      paint: {
-        'circle-color': '#e8643a',
-        'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 10, 26],
-        'circle-opacity': 0.9,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-      },
-    })
-
-    // Cluster count
-    map.addLayer({
-      id: 'cluster-count',
-      type: 'symbol',
-      source: 'pins',
-      filter: ['has', 'point_count'],
-      layout: {
-        'text-field': '{point_count_abbreviated}',
-        'text-font': ['Open Sans Bold'],
-        'text-size': 11,
-      },
-      paint: {
-        'text-color': '#ffffff',
-      },
     })
 
     // Individual pin dots
@@ -223,13 +187,12 @@ export default function MapView({
       id: 'pin-dots',
       type: 'circle',
       source: 'pins',
-      filter: ['!', ['has', 'point_count']],
       paint: {
         'circle-color': [
           'match', ['get', 'type'],
-          'observation', '#e8643a',
+          'observation', '#06b6d4',
           'story', '#8b5cf6',
-          'photo', '#06b6d4',
+          'photo', '#e8643a',
           'question', '#f59e0b',
           'conversation', '#22a55b',
           '#e8643a',
@@ -254,31 +217,13 @@ export default function MapView({
       }
     }
 
-    const handleClusterClick = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
-      if (e.features?.[0]) {
-        const clusterId = e.features[0].properties?.cluster_id
-        const source = map.getSource('pins') as maplibregl.GeoJSONSource
-        source.getClusterExpansionZoom(clusterId).then((zoom) => {
-          map.flyTo({
-            center: (e.features![0].geometry as GeoJSON.Point).coordinates as [number, number],
-            zoom: zoom + 1,
-            duration: 600,
-          })
-        })
-      }
-    }
-
     map.on('click', 'pin-dots', handlePinClick)
-    map.on('click', 'pin-clusters', handleClusterClick)
 
     map.on('mouseenter', 'pin-dots', () => { map.getCanvas().style.cursor = 'pointer' })
     map.on('mouseleave', 'pin-dots', () => { map.getCanvas().style.cursor = '' })
-    map.on('mouseenter', 'pin-clusters', () => { map.getCanvas().style.cursor = 'pointer' })
-    map.on('mouseleave', 'pin-clusters', () => { map.getCanvas().style.cursor = '' })
 
     return () => {
       map.off('click', 'pin-dots', handlePinClick)
-      map.off('click', 'pin-clusters', handleClusterClick)
     }
   }, [pins, activeFilter, onPinClick])
 
